@@ -2,12 +2,11 @@ import { useNextFetchKnowledgeList } from '@/hooks/knowledge-hooks';
 import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Empty, Flex, Input, Space, Spin } from 'antd';
-import KnowledgeCard from './knowledge-card';
-import KnowledgeCreatingModal from './knowledge-creating-modal';
-
 import { useTranslation } from 'react-i18next';
 import { useSaveKnowledge, useSearchKnowledge } from './hooks';
 import styles from './index.less';
+import KnowledgeCard from './knowledge-card';
+import KnowledgeCreatingModal from './knowledge-creating-modal';
 
 const KnowledgeList = () => {
   const { searchString, handleInputChange } = useSearchKnowledge();
@@ -27,28 +26,30 @@ const KnowledgeList = () => {
     <Flex className={styles.knowledge} vertical flex={1}>
       <div className={styles.topWrapper}>
         <div>
+          <h1 className={styles.mainTitle}>Технологии больших идей</h1>
           <span className={styles.title}>
-            {t('welcome')}, {userInfo.nickname}
+            Добро пожаловать, {userInfo.nickname}
           </span>
-          <p className={styles.description}>{t('description')}</p>
+          <p className={styles.description}>База знаний и технологий T1</p>
         </div>
         <Space size={'large'}>
           <Input
-            placeholder={t('searchKnowledgePlaceholder')}
+            placeholder="Поиск по базе знаний"
             value={searchString}
-            style={{ width: 220 }}
+            style={{ width: 280 }}
             allowClear
             onChange={handleInputChange}
             prefix={<SearchOutlined />}
+            className={styles.searchInput}
           />
 
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={showModal}
-            className={styles.topButton}
+            className={styles.createButton}
           >
-            {t('createKnowledgeBase')}
+            Создать базу знаний
           </Button>
         </Space>
       </div>
@@ -65,7 +66,10 @@ const KnowledgeList = () => {
               );
             })
           ) : (
-            <Empty className={styles.knowledgeEmpty}></Empty>
+            <Empty
+              className={styles.knowledgeEmpty}
+              description="Базы знаний не найдены"
+            ></Empty>
           )}
         </Flex>
       </Spin>

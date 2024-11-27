@@ -1,6 +1,6 @@
 import { IModalManagerChildrenProps } from '@/components/modal-manager';
 import { Form, Input, Modal } from 'antd';
-import { useTranslation } from 'react-i18next';
+import styles from './index.less';
 
 type FieldType = {
   name?: string;
@@ -19,36 +19,42 @@ const KnowledgeCreatingModal = ({
 }: IProps) => {
   const [form] = Form.useForm();
 
-  const { t } = useTranslation('translation', { keyPrefix: 'knowledgeList' });
-
   const handleOk = async () => {
     const ret = await form.validateFields();
-
     onOk(ret.name);
   };
 
   return (
     <Modal
-      title={t('createKnowledgeBase')}
+      title="Создание базы знаний"
       open={visible}
       onOk={handleOk}
       onCancel={hideModal}
       okButtonProps={{ loading }}
+      className={styles.modal}
+      okText="Создать"
+      cancelText="Отмена"
     >
       <Form
         name="Create"
-        labelCol={{ span: 4 }}
-        wrapperCol={{ span: 20 }}
+        labelCol={{ span: 6 }}
+        wrapperCol={{ span: 18 }}
         style={{ maxWidth: 600 }}
         autoComplete="off"
         form={form}
+        className={styles.form}
       >
         <Form.Item<FieldType>
-          label={t('name')}
+          label="Название"
           name="name"
-          rules={[{ required: true, message: t('namePlaceholder') }]}
+          rules={[
+            {
+              required: true,
+              message: 'Пожалуйста, введите название базы знаний',
+            },
+          ]}
         >
-          <Input placeholder={t('namePlaceholder')} />
+          <Input placeholder="Введите название базы знаний" />
         </Form.Item>
       </Form>
     </Modal>

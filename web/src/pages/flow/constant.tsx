@@ -16,6 +16,7 @@ import { ReactComponent as InvokeIcon } from '@/assets/svg/invoke-ai.svg';
 import { ReactComponent as Jin10Icon } from '@/assets/svg/jin10.svg';
 import { ReactComponent as KeywordIcon } from '@/assets/svg/keyword.svg';
 import { ReactComponent as NoteIcon } from '@/assets/svg/note.svg';
+import { ReactComponent as NotionIcon } from '@/assets/svg/notion.svg';
 import { ReactComponent as PubMedIcon } from '@/assets/svg/pubmed.svg';
 import { ReactComponent as QWeatherIcon } from '@/assets/svg/qweather.svg';
 import { ReactComponent as SwitchIcon } from '@/assets/svg/switch.svg';
@@ -87,6 +88,7 @@ export enum Operator {
   Crawler = 'Crawler',
   Invoke = 'Invoke',
   Template = 'Template',
+  Notion = 'Notion',
 }
 
 export const CommonOperatorList = Object.values(Operator).filter(
@@ -127,6 +129,7 @@ export const operatorIconMap = {
   [Operator.Crawler]: CrawlerIcon,
   [Operator.Invoke]: InvokeIcon,
   [Operator.Template]: TemplateIcon,
+  [Operator.Notion]: NotionIcon,
 };
 
 export const operatorMap: Record<
@@ -259,6 +262,10 @@ export const operatorMap: Record<
   [Operator.Template]: {
     backgroundColor: '#dee0e2',
   },
+  [Operator.Notion]: {
+    backgroundColor: '#f7f6f3',
+    color: '#37352f',
+  },
 };
 
 export const componentMenuList = [
@@ -357,6 +364,9 @@ export const componentMenuList = [
   },
   {
     name: Operator.Invoke,
+  },
+  {
+    name: Operator.Notion,
   },
 ];
 
@@ -580,6 +590,13 @@ export const initialTemplateValues = {
   parameters: [],
 };
 
+export const initialNotionValues = {
+  top_n: 10,
+  api_key: '',
+  database_id: '',
+  ...initialQueryBaseValues,
+};
+
 export const CategorizeAnchorPointPositions = [
   { top: 1, right: 34 },
   { top: 8, right: 18 },
@@ -660,6 +677,7 @@ export const RestrictedUpstreamMap = {
   [Operator.Note]: [],
   [Operator.Invoke]: [Operator.Begin],
   [Operator.Template]: [Operator.Begin, Operator.Relevant],
+  [Operator.Notion]: [Operator.Begin, Operator.Retrieval],
 };
 
 export const NodeMap = {
@@ -696,6 +714,7 @@ export const NodeMap = {
   [Operator.Crawler]: 'ragNode',
   [Operator.Invoke]: 'invokeNode',
   [Operator.Template]: 'templateNode',
+  [Operator.Notion]: 'ragNode',
 };
 
 export const LanguageOptions = [

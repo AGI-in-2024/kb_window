@@ -1,4 +1,7 @@
+import OperateDropdown from '@/components/operate-dropdown';
 import { KnowledgeRouteKey } from '@/constants/knowledge';
+import { useDeleteKnowledge } from '@/hooks/knowledge-hooks';
+import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import { IKnowledge } from '@/interfaces/database/knowledge';
 import { formatDate } from '@/utils/date';
 import {
@@ -6,14 +9,9 @@ import {
   FileTextOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Badge, Card, Space } from 'antd';
+import { Avatar, Badge, Card, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'umi';
-
-import OperateDropdown from '@/components/operate-dropdown';
-import { useDeleteKnowledge } from '@/hooks/knowledge-hooks';
-import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import styles from './index.less';
 
 interface IProps {
@@ -22,9 +20,7 @@ interface IProps {
 
 const KnowledgeCard = ({ item }: IProps) => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const { data: userInfo } = useFetchUserInfo();
-
   const { deleteKnowledge } = useDeleteKnowledge();
 
   const removeKnowledge = async () => {
@@ -40,30 +36,37 @@ const KnowledgeCard = ({ item }: IProps) => {
   return (
     <Badge.Ribbon
       text={item.nickname}
-      color={userInfo.nickname === item.nickname ? '#1677ff' : 'pink'}
+      color={userInfo.nickname === item.nickname ? '#00A0E3' : '#E37200'}
       className={classNames(styles.ribbon, {
         [styles.hideRibbon]: item.permission !== 'team',
       })}
     >
-      <Card className={styles.card} onClick={handleCardClick}>
+      <Card className={styles.card} onClick={handleCardClick} bordered={false}>
         <div className={styles.container}>
           <div className={styles.content}>
-            <Avatar size={34} icon={<UserOutlined />} src={item.avatar} />
-            <OperateDropdown deleteItem={removeKnowledge}></OperateDropdown>
+            <div className={styles.userInfo}>
+              <Avatar
+                size={40}
+                icon={<UserOutlined />}
+                src={item.avatar}
+                className={styles.avatar}
+              />
+              <span className={styles.nickname}>{item.nickname}</span>
+            </div>
+            <OperateDropdown deleteItem={removeKnowledge} />
           </div>
           <div className={styles.titleWrapper}>
-            <span className={styles.title}>{item.name}</span>
-            <p>{item.description}</p>
+            <Tooltip title={item.name}>
+              <span className={styles.title}>{item.name}</span>
+            </Tooltip>
+            <p className={styles.description}>{item.description}</p>
           </div>
           <div className={styles.footer}>
             <div className={styles.footerTop}>
               <div className={styles.bottomLeft}>
                 <FileTextOutlined className={styles.leftIcon} />
                 <span className={styles.rightText}>
-                  <Space>
-                    {item.doc_num}
-                    {t('knowledgeList.doc')}
-                  </Space>
+                  <Space>{item.doc_num} документов</Space>
                 </span>
               </div>
             </div>
@@ -74,22 +77,6 @@ const KnowledgeCard = ({ item }: IProps) => {
                   {formatDate(item.update_time)}
                 </span>
               </div>
-              {/* <Avatar.Group size={25}>
-                <Avatar src="https://api.dicebear.com/7.x/miniavs/svg?seed=1" />
-                <a href="https://ant.design">
-                  <Avatar style={{ backgroundColor: '#f56a00' }}>K</Avatar>
-                </a>
-                <Tooltip title="Ant User" placement="top">
-                  <Avatar
-                    style={{ backgroundColor: '#87d068' }}
-                    icon={<UserOutlined />}
-                  />
-                </Tooltip>
-                <Avatar
-                  style={{ backgroundColor: '#1677ff' }}
-                  icon={<AntDesignOutlined />}
-                />
-              </Avatar.Group> */}
             </div>
           </div>
         </div>
