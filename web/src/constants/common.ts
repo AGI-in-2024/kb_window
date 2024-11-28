@@ -40,6 +40,7 @@ export const fileIconMap = {
 };
 
 export const LanguageList = [
+  'Russian',
   'English',
   'Chinese',
   'Traditional Chinese',
@@ -49,6 +50,7 @@ export const LanguageList = [
 ];
 
 export const LanguageMap = {
+  Russian: 'Русский',
   English: 'English',
   Chinese: '简体中文',
   'Traditional Chinese': '繁體中文',
@@ -58,6 +60,7 @@ export const LanguageMap = {
 };
 
 export const LanguageTranslationMap = {
+  Russian: 'ru',
   English: 'en',
   Chinese: 'zh',
   'Traditional Chinese': 'zh-TRADITIONAL',
