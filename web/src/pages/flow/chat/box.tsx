@@ -1,146 +1,211 @@
 import MessageItem from '@/components/message-item';
+import { useClickDrawer } from '@/components/pdf-drawer/hooks';
 import { MessageType } from '@/constants/chat';
 import { useTranslate } from '@/hooks/common-hooks';
-import { useGetFileIcon } from '@/pages/chat/hooks';
+import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import { buildMessageItemReference } from '@/pages/chat/utils';
+import { GlobalOutlined, RobotOutlined } from '@ant-design/icons';
 import {
-  CopyOutlined,
-  DesktopOutlined,
-  MobileOutlined,
-} from '@ant-design/icons';
-import {
+  Alert,
   Button,
-  ColorPicker,
   Flex,
   Form,
   Input,
   message,
   Modal,
-  Radio,
-  Select,
   Spin,
-  Switch,
   Tabs,
+  Typography,
 } from 'antd';
 import React, { useState } from 'react';
-
+import { useParams } from 'umi';
 import { useSendNextMessage } from './hooks';
-
-import PdfDrawer from '@/components/pdf-drawer';
-import { useClickDrawer } from '@/components/pdf-drawer/hooks';
-import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import styles from './index.less';
 
 // Type definitions for deployment configuration
-interface DeploymentConfig {
-  theme: 'light' | 'dark' | 'system';
-  primaryColor?: string;
-  layout: 'compact' | 'full-width' | 'sidebar';
-  position: 'bottom-right' | 'bottom-left' | 'full-screen';
-  welcomeMessage?: string;
-  platform: 'website' | 'telegram' | 'slack' | 'custom-api';
-  language: string;
-  branding: boolean;
+interface TelegramConfig {
+  token: string;
+  api_key: string;
+  chat_id: string;
 }
 
-// Props interface for DeploymentConfigModal
-interface DeploymentConfigModalProps {
+interface BotStatus {
+  isRunning: boolean;
+  lastChecked: Date;
+}
+
+// Props interface for TelegramConfigModal
+interface TelegramConfigModalProps {
   visible: boolean;
   onCancel: () => void;
-  onGenerate: (config: DeploymentConfig) => void;
+  onDeploy: (config: TelegramConfig) => void;
 }
 
-const DeploymentConfigModal: React.FC<DeploymentConfigModalProps> = ({
+const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
   visible,
   onCancel,
-  onGenerate,
+  onDeploy,
 }) => {
-  const [form] = Form.useForm<DeploymentConfig>();
+  const [form] = Form.useForm<TelegramConfig>();
+  const [deploymentStatus, setDeploymentStatus] = useState<string>('');
+  const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
 
-  const handleGenerate = () => {
-    form.validateFields().then((values) => {
-      onGenerate(values);
-      onCancel();
-    });
+  const checkBotStatus = async (chatId: string) => {
+    try {
+      const response = await fetch(
+        `http://45.130.214.61:5005/telebot_check_status/?id=${chatId}`,
+      );
+      const status = await response.json();
+      setBotStatus({
+        isRunning: status,
+        lastChecked: new Date(),
+      });
+      return status;
+    } catch (error) {
+      console.error('Failed to check bot status:', error);
+      return false;
+    }
+  };
+
+  const stopBot = async (chatId: string) => {
+    try {
+      const response = await fetch(
+        `http://45.130.214.61:5005/telebot_stop/?id=${chatId}`,
+      );
+      if (response.ok) {
+        message.success('Bot stopped successfully');
+        setBotStatus(null);
+      } else {
+        message.error('Failed to stop bot');
+      }
+    } catch (error) {
+      message.error('Error stopping bot');
+    }
+  };
+
+  const handleDeploy = async () => {
+    try {
+      const values = await form.validateFields();
+      const response = await fetch('http://45.130.214.61:5005/telebot_start/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: values.token,
+          id: values.chat_id,
+          data: {
+            api_key: values.api_key,
+            chat_id: values.chat_id,
+            session_id: values.chat_id,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        message.success('Telegram bot deployed successfully!');
+        const status = await checkBotStatus(values.chat_id);
+        if (status) {
+          onDeploy(values);
+          setDeploymentStatus('Bot is running');
+        } else {
+          setDeploymentStatus('Bot deployment failed');
+        }
+      } else {
+        message.error('Failed to deploy Telegram bot');
+        setDeploymentStatus('Deployment failed');
+      }
+    } catch (error) {
+      message.error('Validation failed or deployment error occurred');
+      setDeploymentStatus('Error during deployment');
+    }
   };
 
   return (
     <Modal
-      title="Deployment Configuration"
+      title="Deploy Telegram Bot"
       open={visible}
       onCancel={onCancel}
-      onOk={handleGenerate}
-      width={800}
+      footer={[
+        <Button key="cancel" onClick={onCancel}>
+          Cancel
+        </Button>,
+        botStatus?.isRunning ? (
+          <Button
+            key="stop"
+            danger
+            onClick={() => {
+              const chatId = form.getFieldValue('chat_id');
+              if (chatId) {
+                stopBot(chatId);
+              }
+            }}
+          >
+            Stop Bot
+          </Button>
+        ) : (
+          <Button key="deploy" type="primary" onClick={handleDeploy}>
+            Deploy Bot
+          </Button>
+        ),
+        <Button
+          key="check"
+          onClick={() => {
+            const chatId = form.getFieldValue('chat_id');
+            if (chatId) {
+              checkBotStatus(chatId);
+            }
+          }}
+        >
+          Check Status
+        </Button>,
+      ]}
+      width={600}
     >
-      <Tabs defaultActiveKey="1">
-        <Tabs.TabPane tab="UI Customization" key="1">
-          <Form<DeploymentConfig> form={form} layout="vertical">
-            <Form.Item name="theme" label="Theme">
-              <Radio.Group>
-                <Radio value="light">Light</Radio>
-                <Radio value="dark">Dark</Radio>
-                <Radio value="system">System Default</Radio>
-              </Radio.Group>
-            </Form.Item>
+      <Form<TelegramConfig> form={form} layout="vertical">
+        <Form.Item
+          name="token"
+          label="Telegram Bot Token"
+          rules={[{ required: true, message: 'Please enter bot token' }]}
+        >
+          <Input placeholder="Enter your Telegram bot token" />
+        </Form.Item>
 
-            <Form.Item name="primaryColor" label="Primary Color">
-              <ColorPicker showText />
-            </Form.Item>
+        <Form.Item
+          name="api_key"
+          label="RagFlow API Key"
+          rules={[{ required: true, message: 'Please enter API key' }]}
+        >
+          <Input placeholder="Enter your RagFlow API key" />
+        </Form.Item>
 
-            <Form.Item name="layout" label="Layout">
-              <Select>
-                <Select.Option value="compact">Compact</Select.Option>
-                <Select.Option value="full-width">Full Width</Select.Option>
-                <Select.Option value="sidebar">Sidebar</Select.Option>
-              </Select>
-            </Form.Item>
+        <Form.Item
+          name="chat_id"
+          label="Chat ID"
+          rules={[{ required: true, message: 'Please enter chat ID' }]}
+        >
+          <Input placeholder="Enter chat ID" />
+        </Form.Item>
 
-            <Form.Item name="position" label="Widget Position">
-              <Radio.Group>
-                <Radio value="bottom-right">
-                  <MobileOutlined /> Bottom Right
-                </Radio>
-                <Radio value="bottom-left">
-                  <MobileOutlined /> Bottom Left
-                </Radio>
-                <Radio value="full-screen">
-                  <DesktopOutlined /> Full Screen
-                </Radio>
-              </Radio.Group>
-            </Form.Item>
+        {botStatus && (
+          <Alert
+            message={`Bot Status: ${botStatus.isRunning ? 'Running' : 'Stopped'}`}
+            description={`Last checked: ${botStatus.lastChecked.toLocaleString()}`}
+            type={botStatus.isRunning ? 'success' : 'warning'}
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
 
-            <Form.Item name="welcomeMessage" label="Welcome Message">
-              <Input placeholder="Enter initial welcome message" />
-            </Form.Item>
-          </Form>
-        </Tabs.TabPane>
-
-        <Tabs.TabPane tab="Integration" key="2">
-          <Form<DeploymentConfig> form={form} layout="vertical">
-            <Form.Item name="platform" label="Deployment Platform">
-              <Select>
-                <Select.Option value="website">Website</Select.Option>
-                <Select.Option value="telegram">Telegram</Select.Option>
-                <Select.Option value="slack">Slack</Select.Option>
-                <Select.Option value="custom-api">Custom API</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item name="language" label="Default Language">
-              <Select>
-                <Select.Option value="en">English</Select.Option>
-                <Select.Option value="es">Spanish</Select.Option>
-                <Select.Option value="fr">French</Select.Option>
-                <Select.Option value="de">German</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item name="branding" label="Show Branding">
-              <Switch defaultChecked />
-            </Form.Item>
-          </Form>
-        </Tabs.TabPane>
-      </Tabs>
+        {deploymentStatus && (
+          <Alert
+            message={deploymentStatus}
+            type="info"
+            showIcon
+            style={{ marginTop: 16 }}
+          />
+        )}
+      </Form>
     </Modal>
   );
 };
@@ -157,46 +222,40 @@ const FlowChatBox = () => {
     reference,
   } = useSendNextMessage();
 
-  const { visible, hideModal, documentId, selectedChunk, clickDocumentButton } =
-    useClickDrawer();
-  useGetFileIcon();
+  const { id: flowId } = useParams<{ id: string }>();
   const { t } = useTranslate('chat');
   const { data: userInfo } = useFetchUserInfo();
+  const { clickDocumentButton } = useClickDrawer();
 
-  const [deployModalVisible, setDeployModalVisible] = useState(false);
-  const [deployConfig, setDeployConfig] = useState<DeploymentConfig | null>(
-    null,
-  );
+  const [telegramModalVisible, setTelegramModalVisible] = useState(false);
+  const [siteDeployModalVisible, setSiteDeployModalVisible] = useState(false);
 
-  const handleDeploy = () => {
-    setDeployModalVisible(true);
+  const handleTelegramDeploy = (config: TelegramConfig) => {
+    message.success('Telegram configuration saved');
   };
 
-  const generateEmbedCode = (config: DeploymentConfig) => {
-    setDeployConfig(config);
+  const handleSiteDeploy = () => {
+    setSiteDeployModalVisible(true);
+  };
 
+  const generateEmbedCode = () => {
     const embedCode = `
+<div id="ragflow-chat"></div>
 <script>
-  window.ragflowChat = {
-    flowId: '${Math.random().toString(36).substr(2, 9)}',
-    config: ${JSON.stringify(config, null, 2)}
+  window.ragflowConfig = {
+    flowId: '${flowId}',
+    containerId: 'ragflow-chat',
+    theme: 'light',
+    position: 'bottom-right'
   };
   (function() {
     const script = document.createElement('script');
-    script.src = 'https://your-ragflow-cdn.com/embed.js';
+    script.src = '${window.location.origin}/embed.js';
     document.body.appendChild(script);
   })();
-</script>
-    `.trim();
+</script>`.trim();
 
-    navigator.clipboard
-      .writeText(embedCode)
-      .then(() => {
-        message.success('Customized embed code copied to clipboard!');
-      })
-      .catch((err) => {
-        message.error('Failed to copy embed code');
-      });
+    return embedCode;
   };
 
   return (
@@ -214,8 +273,8 @@ const FlowChatBox = () => {
                       derivedMessages.length - 1 === i
                     }
                     key={message.id}
-                    nickname={userInfo.nickname}
-                    avatar={userInfo.avatar}
+                    nickname={userInfo?.nickname}
+                    avatar={userInfo?.avatar}
                     item={message}
                     reference={buildMessageItemReference(
                       { message: derivedMessages, reference },
@@ -225,7 +284,7 @@ const FlowChatBox = () => {
                     index={i}
                     showLikeButton={false}
                     sendLoading={sendLoading}
-                  ></MessageItem>
+                  />
                 );
               })}
             </Spin>
@@ -246,11 +305,19 @@ const FlowChatBox = () => {
                 {t('send')}
               </Button>
               <Button
-                icon={<CopyOutlined />}
-                onClick={handleDeploy}
-                title="Deploy / Get Embed Code"
+                icon={<RobotOutlined />}
+                onClick={() => setTelegramModalVisible(true)}
+                title="Deploy Telegram Bot"
               >
-                Deploy
+                Deploy to Telegram
+              </Button>
+              <Button
+                icon={<GlobalOutlined />}
+                onClick={handleSiteDeploy}
+                title="Deploy to Website"
+                type="default"
+              >
+                Deploy to Site
               </Button>
             </Flex>
           }
@@ -258,18 +325,94 @@ const FlowChatBox = () => {
           onChange={handleInputChange}
         />
       </Flex>
-      <PdfDrawer
-        visible={visible}
-        hideModal={hideModal}
-        documentId={documentId}
-        chunk={selectedChunk}
-      ></PdfDrawer>
 
-      <DeploymentConfigModal
-        visible={deployModalVisible}
-        onCancel={() => setDeployModalVisible(false)}
-        onGenerate={generateEmbedCode}
+      <TelegramConfigModal
+        visible={telegramModalVisible}
+        onCancel={() => setTelegramModalVisible(false)}
+        onDeploy={handleTelegramDeploy}
       />
+
+      <Modal
+        title="Deploy to Website"
+        open={siteDeployModalVisible}
+        onCancel={() => setSiteDeployModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setSiteDeployModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key="preview"
+            type="default"
+            onClick={() => window.open('http://localhost:3000', '_blank')}
+          >
+            Open Preview
+          </Button>,
+          <Button
+            key="copy"
+            type="primary"
+            onClick={() => {
+              const embedCode = generateEmbedCode();
+              navigator.clipboard.writeText(embedCode);
+              message.success('Embed code copied to clipboard!');
+            }}
+          >
+            Copy Embed Code
+          </Button>,
+        ]}
+        width={800}
+      >
+        <div style={{ marginBottom: 24 }}>
+          <Alert
+            message="Website Integration"
+            description="You can either preview your chat interface directly or embed it into your website using the code below."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+
+          <Tabs defaultActiveKey="1">
+            <Tabs.TabPane tab="Preview" key="1">
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <img
+                  src="/preview-chat.png"
+                  alt="Chat Preview"
+                  style={{
+                    maxWidth: '100%',
+                    border: '1px solid #eee',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  }}
+                />
+              </div>
+            </Tabs.TabPane>
+            <Tabs.TabPane tab="Embed Code" key="2">
+              <div
+                style={{
+                  background: '#f5f5f5',
+                  padding: '16px',
+                  borderRadius: '4px',
+                }}
+              >
+                <pre
+                  style={{
+                    margin: 0,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {generateEmbedCode()}
+                </pre>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <Typography.Text type="secondary">
+                  Add this code to your website where you want the chat
+                  interface to appear.
+                </Typography.Text>
+              </div>
+            </Tabs.TabPane>
+          </Tabs>
+        </div>
+      </Modal>
     </>
   );
 };
